@@ -31,6 +31,16 @@ class TranslationResolverTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(item.trade_base_type, "Silk Slippers")
         self.assertEqual(poe2db_client.received_index_paths, ("/tw/Boots",))
 
+    async def test_resolves_plain_chinese_name_query_to_trade2_english_term(self):
+        cache = TranslationCache(seed_aliases=False)
+        resolver = TranslationResolver(cache=cache, poe2db_client=_KnownPlainNamePoe2DbClient())
+
+        translated, warnings = await resolver.resolve_search_text("阿德爾的傳承")
+
+        self.assertEqual(translated, "Aldur's Legacy")
+        self.assertEqual(warnings, [])
+        self.assertEqual(cache.get("unique_name", "阿德爾的傳承"), "Aldur's Legacy")
+
     async def test_applies_poe2db_unique_translation_and_saves_to_cache(self):
         cache = TranslationCache(seed_aliases=False)
         resolver = TranslationResolver(cache=cache, poe2db_client=_KnownPoe2DbClient())
@@ -141,6 +151,18 @@ class _RecordingPoe2DbClient:
     async def find_base_type_translation(self, base_type: str, *, index_paths=None):
         self.received_index_paths = index_paths
         return "Silk Slippers"
+
+
+class _KnownPlainNamePoe2DbClient:
+    async def find_unique_translation(self, name: str):
+        from services.poe2db_client import ItemTranslation
+
+        if name == "阿德爾的傳承":
+            return ItemTranslation(name="Aldur's Legacy", source_path="/tw/Aldurs_Legacy")
+        return None
+
+    async def find_base_type_translation(self, base_type: str, *, index_paths=None):
+        return None
 
 
 if __name__ == "__main__":

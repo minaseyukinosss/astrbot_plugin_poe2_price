@@ -149,6 +149,15 @@ def _extract_link_near_text(page_html: str, zh_text: str) -> str | None:
 def _extract_item_translation(page_html: str, *, source_path: str = "") -> ItemTranslation | None:
     """从详情页脚本数据里提取英文名和英文底材。"""
 
+    title_name = _extract_page_title_name(page_html)
+    base_type = _extract_json_string(page_html, "baseType") or _extract_json_string(page_html, "typeLine")
+    if title_name:
+        return ItemTranslation(
+            name=title_name,
+            base_type=base_type if _is_trade_text(base_type) else "",
+            source_path=source_path,
+        )
+
     objects = _extract_json_objects(page_html)
     for payload in objects:
         translation = _translation_from_payload(payload, source_path=source_path)
@@ -164,6 +173,33 @@ def _extract_item_translation(page_html: str, *, source_path: str = "") -> ItemT
             source_path=source_path,
         )
     return None
+
+
+def _extract_page_title_name(page_html: str) -> str:
+    meta_title = _extract_meta_content(page_html, "og:title")
+    if _is_trade_text(meta_title):
+        return meta_title
+
+    match = re.search(r"<title>\s*(?P<title>.*?)\s*</title>", page_html, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return ""
+    title = html.unescape(_strip_tags(match.group("title"))).strip()
+    title = re.split(r"\s+-\s+", title, maxsplit=1)[0].strip()
+    return title if _is_trade_text(title) else ""
+
+
+def _extract_meta_content(page_html: str, property_name: str) -> str:
+    for tag_match in re.finditer(r"<meta\b[^>]*>", page_html, flags=re.IGNORECASE):
+        tag = tag_match.group(0)
+        if _extract_attr(tag, "property").lower() != property_name.lower():
+            continue
+        return html.unescape(_extract_attr(tag, "content")).strip()
+    return ""
+
+
+def _extract_attr(tag: str, name: str) -> str:
+    match = re.search(rf"\b{re.escape(name)}=(?P<quote>[\"'])(?P<value>.*?)(?P=quote)", tag, flags=re.IGNORECASE)
+    return match.group("value") if match else ""
 
 
 def _translation_from_payload(payload: Any, *, source_path: str) -> ItemTranslation | None:

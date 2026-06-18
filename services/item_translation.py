@@ -7,6 +7,7 @@ BASE_TYPE_ALIASES_ZH_TW = {
 
 UNIQUE_NAME_ALIASES_ZH_TW = {
     "水井之心": "Heart of the Well",
+    "阿德爾的傳承": "Aldur's Legacy",
 }
 
 

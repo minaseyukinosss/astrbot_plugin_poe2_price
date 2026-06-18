@@ -11,6 +11,7 @@ class TranslationCacheTest(unittest.TestCase):
 
         self.assertEqual(cache.get("base_type", "鑽石"), "Diamond")
         self.assertEqual(cache.get("unique_name", "水井之心"), "Heart of the Well")
+        self.assertEqual(cache.get("unique_name", "阿德爾的傳承"), "Aldur's Legacy")
 
     def test_set_save_and_load_translation_entry(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

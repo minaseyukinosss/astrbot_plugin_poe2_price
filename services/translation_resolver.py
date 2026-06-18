@@ -87,6 +87,37 @@ class TranslationResolver:
             if not item.trade_base_type and _uses_cjk_text(item.base_type):
                 item.translation_warnings.append(f"未能将繁中底材「{item.base_type}」翻译为 trade2 英文底材")
 
+    async def resolve_search_text(self, text: str) -> tuple[str, list[str]]:
+        """翻译直接输入的繁中查询词，避免把中文 term 直接发给 trade2。"""
+
+        query_text = text.strip()
+        warnings: list[str] = []
+        if not query_text or not _uses_cjk_text(query_text):
+            return query_text, warnings
+
+        for kind in ("unique_name", "base_type"):
+            cached = self.cache.get(kind, query_text)
+            if cached:
+                return cached, warnings
+
+        try:
+            unique_name, _ = await self._resolve_unique_translation(query_text)
+            if unique_name:
+                return unique_name, warnings
+        except Exception:
+            _append_once(warnings, "编年史翻译查询失败，已使用原始关键词")
+
+        try:
+            base_type = await self._resolve_base_type(query_text)
+            if base_type:
+                return base_type, warnings
+        except Exception:
+            _append_once(warnings, "编年史翻译查询失败，已使用原始关键词")
+
+        if not warnings:
+            warnings.append(f"未能将繁中查询「{query_text}」翻译为 trade2 英文关键词")
+        return query_text, warnings
+
     def save(self) -> None:
         """保存翻译缓存。"""
 

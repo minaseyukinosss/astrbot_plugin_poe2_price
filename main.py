@@ -149,8 +149,10 @@ class Poe2PricePlugin(Star):
             trade_query = build_item_query(item)
             display_name = item.display_name
         else:
-            trade_query = build_name_query(query_text)
-            display_name = query_text
+            search_text, translation_warnings = await self.translation_resolver.resolve_search_text(query_text)
+            self._save_translation_cache()
+            trade_query = build_name_query(search_text)
+            display_name = query_text if search_text == query_text else f"{query_text} ({search_text})"
 
         try:
             search_result = await self.trade_client.search(self.default_league, trade_query)
