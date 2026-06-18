@@ -18,8 +18,8 @@ class QueryBuilderTest(unittest.TestCase):
         query = build_item_query(item)
 
         self.assertNotIn("name", query["query"])
-        self.assertNotIn("type", query["query"])
-        self.assertEqual(query["query"]["term"], "水井之心 鑽石")
+        self.assertEqual(query["query"]["type"], "Diamond")
+        self.assertNotIn("term", query["query"])
         self.assertNotIn("stats", query["query"])
         self.assertEqual(query["query"]["status"]["option"], "online")
         self.assertEqual(query["query"]["filters"]["trade_filters"]["filters"]["sale_type"]["option"], "priced")

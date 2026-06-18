@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from statistics import median
 
 try:
@@ -19,7 +20,8 @@ def estimate_price(
 ) -> PriceEstimate:
     """根据挂售记录估算价格。"""
 
-    supported = [listing for listing in listings if listing.amount > 0 and listing.currency == "exalted"]
+    currency = _dominant_currency(listings)
+    supported = [listing for listing in listings if listing.amount > 0 and listing.currency == currency]
     filtered = _drop_low_outliers(supported)
     amounts = sorted(listing.amount for listing in filtered)
 
@@ -34,7 +36,7 @@ def estimate_price(
             median=None,
             low=None,
             high=None,
-            currency="exalted",
+            currency=currency,
             confidence="低",
             valid_count=0,
             total_count=len(listings),
@@ -57,7 +59,7 @@ def estimate_price(
         median=mid,
         low=low,
         high=high,
-        currency="exalted",
+        currency=currency,
         confidence=confidence,
         valid_count=len(amounts),
         total_count=len(listings),
@@ -75,6 +77,13 @@ def _drop_low_outliers(listings: list[TradeListing]) -> list[TradeListing]:
     med = median(amounts)
     floor = med * 0.35
     return [listing for listing in listings if listing.amount >= floor]
+
+
+def _dominant_currency(listings: list[TradeListing]) -> str:
+    currencies = [listing.currency for listing in listings if listing.amount > 0 and listing.currency]
+    if not currencies:
+        return "exalted"
+    return Counter(currencies).most_common(1)[0][0]
 
 
 def _percentile_nearest(values: list[float], percentile: float) -> float:

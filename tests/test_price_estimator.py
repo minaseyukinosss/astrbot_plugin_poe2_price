@@ -36,6 +36,20 @@ class PriceEstimatorTest(unittest.TestCase):
         self.assertEqual(estimate.confidence, "低")
         self.assertIn("样本不足", estimate.warnings)
 
+    def test_uses_most_common_currency_instead_of_exalted_only(self):
+        listings = [
+            TradeListing(amount=1, currency="divine"),
+            TradeListing(amount=2, currency="divine"),
+            TradeListing(amount=3, currency="divine"),
+            TradeListing(amount=20, currency="exalted"),
+        ]
+
+        estimate = estimate_price("Diamond", "Runes of Aldur", listings, min_valid_listings=3)
+
+        self.assertEqual(estimate.currency, "divine")
+        self.assertEqual(estimate.valid_count, 3)
+        self.assertEqual(estimate.median, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,11 @@ try:
 except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
     from models import ParsedItem
 
+try:
+    from .item_translation import translate_base_type, translate_unique_name
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from services.item_translation import translate_base_type, translate_unique_name
+
 
 def build_item_query(item: ParsedItem) -> dict:
     """根据解析物品构建 trade2 查询。"""
@@ -22,10 +27,19 @@ def build_item_query(item: ParsedItem) -> dict:
         "sort": {"price": "asc"},
     }
 
+    translated_name = translate_unique_name(item.name) if item.rarity == "unique" else None
+    translated_base_type = translate_base_type(item.base_type)
+
+    if translated_name:
+        query["query"]["name"] = translated_name
+    if translated_base_type:
+        query["query"]["type"] = translated_base_type
+
     if _uses_cjk_text(item.name) or _uses_cjk_text(item.base_type):
-        term = " ".join(part for part in (item.name, item.base_type) if part)
-        if term:
-            query["query"]["term"] = term
+        if not translated_base_type and not translated_name:
+            term = " ".join(part for part in (item.name, item.base_type) if part)
+            if term:
+                query["query"]["term"] = term
     else:
         if item.rarity == "unique" and item.name:
             query["query"]["name"] = item.name
