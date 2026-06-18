@@ -5,19 +5,21 @@ from services.query_builder import build_item_query, build_name_query
 
 
 class QueryBuilderTest(unittest.TestCase):
-    def test_unique_item_query_uses_traditional_chinese_name_and_base_type(self):
+    def test_unique_item_query_uses_trade2_translated_name_and_base_type(self):
         item = ParsedItem(
             raw_text="",
             item_class="珠寶",
             rarity="unique",
             name="水井之心",
             base_type="鑽石",
+            trade_name="The Wellspring",
+            trade_base_type="Diamond",
             item_level=81,
         )
 
         query = build_item_query(item)
 
-        self.assertNotIn("name", query["query"])
+        self.assertEqual(query["query"]["name"], "The Wellspring")
         self.assertEqual(query["query"]["type"], "Diamond")
         self.assertNotIn("term", query["query"])
         self.assertNotIn("stats", query["query"])
@@ -32,6 +34,7 @@ class QueryBuilderTest(unittest.TestCase):
             rarity="rare",
             name="風暴 行靴",
             base_type="絲綢便鞋",
+            trade_base_type="Silk Slippers",
             item_level=72,
             quality=20,
             energy_shield=64,
@@ -43,8 +46,8 @@ class QueryBuilderTest(unittest.TestCase):
 
         query = build_item_query(item)
 
-        self.assertNotIn("type", query["query"])
-        self.assertEqual(query["query"]["term"], "風暴 行靴 絲綢便鞋")
+        self.assertEqual(query["query"]["type"], "Silk Slippers")
+        self.assertNotIn("term", query["query"])
         self.assertEqual(
             query["query"]["filters"]["type_filters"]["filters"]["rarity"]["option"],
             "rare",
@@ -56,6 +59,26 @@ class QueryBuilderTest(unittest.TestCase):
         self.assertEqual([entry["id"] for entry in stat_filters], ["explicit.stat_3299347043", "explicit.stat_3845215720"])
         self.assertEqual(stat_filters[0]["value"]["min"], 19)
         self.assertEqual(stat_filters[1]["value"]["min"], 16)
+
+    def test_untranslated_traditional_chinese_item_does_not_send_chinese_term(self):
+        item = ParsedItem(
+            raw_text="",
+            item_class="鞋子",
+            rarity="rare",
+            name="風暴 行靴",
+            base_type="未知底材",
+            item_level=72,
+            explicit_mods=[
+                ItemModifier(text="+24 最大生命", stat_id="explicit.stat_3299347043", values=[24]),
+            ],
+        )
+
+        query = build_item_query(item)
+
+        self.assertNotIn("term", query["query"])
+        self.assertNotIn("name", query["query"])
+        self.assertNotIn("type", query["query"])
+        self.assertEqual(query["query"]["stats"][0]["filters"][0]["id"], "explicit.stat_3299347043")
 
     def test_name_query_uses_free_text_term_without_empty_stats(self):
         query = build_name_query("水井之心")

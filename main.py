@@ -11,20 +11,26 @@ try:
     from .services.formatter import format_price_estimate
     from .services.item_parser import parse_item_text
     from .services.ninja_client import NinjaClient
+    from .services.poe2db_client import Poe2DbClient
     from .services.poe2scout_client import Poe2ScoutClient
     from .services.price_estimator import estimate_price
     from .services.query_builder import build_item_query, build_name_query
     from .services.stat_catalog import StatCatalog
     from .services.trade_client import TradeApiError, TradeClient, build_trade_search_url
+    from .services.translation_cache import TranslationCache
+    from .services.translation_resolver import TranslationResolver
 except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
     from services.formatter import format_price_estimate
     from services.item_parser import parse_item_text
     from services.ninja_client import NinjaClient
+    from services.poe2db_client import Poe2DbClient
     from services.poe2scout_client import Poe2ScoutClient
     from services.price_estimator import estimate_price
     from services.query_builder import build_item_query, build_name_query
     from services.stat_catalog import StatCatalog
     from services.trade_client import TradeApiError, TradeClient, build_trade_search_url
+    from services.translation_cache import TranslationCache
+    from services.translation_resolver import TranslationResolver
 
 
 class Poe2PricePlugin(Star):
@@ -44,11 +50,19 @@ class Poe2PricePlugin(Star):
         self.trade_client = TradeClient(user_agent=user_agent, timeout=timeout)
         self.ninja_client = NinjaClient(timeout=timeout, user_agent=user_agent)
         self.scout_client = Poe2ScoutClient(timeout=timeout, cache_ttl=int(config.get("scout_cache_ttl_seconds", 1800)))
+        self.poe2db_client = Poe2DbClient(timeout=timeout, user_agent=user_agent)
         self.stat_catalog = StatCatalog()
 
         data_dir = Path(get_astrbot_data_path()) / "plugin_data" / self.name
         self.stat_cache_path = data_dir / "trade_stats.json"
+        self.translation_cache_path = data_dir / "translations_zh_tw.json"
         self.stat_catalog.load(self.stat_cache_path)
+        self.translation_cache = TranslationCache.load(self.translation_cache_path)
+        self.translation_resolver = TranslationResolver(
+            cache=self.translation_cache,
+            poe2db_client=self.poe2db_client,
+            cache_path=self.translation_cache_path,
+        )
 
         if contact == "unset-contact":
             logger.warning("POE2 查价插件未配置 user_agent_contact，建议在插件配置中填写联系信息。")
@@ -125,9 +139,13 @@ class Poe2PricePlugin(Star):
             return "请粘贴物品文本或输入物品名，例如：/poe2查价 水井之心"
 
         item = parse_item_text(query_text)
+        translation_warnings: list[str] = []
         if item:
             await self._ensure_stats_loaded()
             self.stat_catalog.apply_to_modifiers(item.explicit_mods + item.implicit_mods + item.crafted_mods)
+            await self.translation_resolver.apply_to_item(item)
+            self._save_translation_cache()
+            translation_warnings = list(item.translation_warnings)
             trade_query = build_item_query(item)
             display_name = item.display_name
         else:
@@ -139,7 +157,7 @@ class Poe2PricePlugin(Star):
             result_ids = search_result.get("result", [])
             query_id = search_result.get("id")
             if not query_id or not result_ids:
-                return f"没有找到可比挂售。\n物品：{display_name}\n联盟：{self.default_league}"
+                return _format_no_results(display_name, self.default_league, translation_warnings)
             trade_url = build_trade_search_url(self.default_league, query_id, base_url=self.trade_client.base_url)
             listings = await self.trade_client.fetch_listings(result_ids, query_id, limit=self.max_fetch_results)
         except TradeApiError as exc:
@@ -155,6 +173,7 @@ class Poe2PricePlugin(Star):
             min_valid_listings=self.min_valid_listings,
             trade_url=trade_url,
         )
+        estimate.warnings.extend(translation_warnings)
         return format_price_estimate(estimate)
 
     async def _ensure_stats_loaded(self) -> None:
@@ -173,6 +192,13 @@ class Poe2PricePlugin(Star):
         await self.trade_client.close()
         await self.ninja_client.close()
         await self.scout_client.close()
+        await self.poe2db_client.close()
+
+    def _save_translation_cache(self) -> None:
+        try:
+            self.translation_resolver.save()
+        except Exception as exc:
+            logger.warning(f"保存 POE2 繁中翻译缓存失败：{exc}")
 
 
 def _strip_command(message: str, command: str) -> str:
@@ -181,3 +207,14 @@ def _strip_command(message: str, command: str) -> str:
         if text.startswith(prefix):
             return text[len(prefix) :].strip()
     return text
+
+
+def _format_no_results(display_name: str, league: str, warnings: list[str]) -> str:
+    lines = [
+        "没有找到可比挂售。",
+        f"物品：{display_name}",
+        f"联盟：{league}",
+    ]
+    for warning in warnings:
+        lines.append(f"警告：{warning}")
+    return "\n".join(lines)

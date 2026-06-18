@@ -41,6 +41,9 @@ class ParsedItem:
     explicit_mods: list[ItemModifier] = field(default_factory=list)
     crafted_mods: list[ItemModifier] = field(default_factory=list)
     flavour_lines: list[str] = field(default_factory=list)
+    trade_name: str = ""
+    trade_base_type: str = ""
+    translation_warnings: list[str] = field(default_factory=list)
 
     @property
     def display_name(self) -> str:

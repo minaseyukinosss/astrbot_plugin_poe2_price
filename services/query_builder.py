@@ -27,20 +27,15 @@ def build_item_query(item: ParsedItem) -> dict:
         "sort": {"price": "asc"},
     }
 
-    translated_name = translate_unique_name(item.name) if item.rarity == "unique" else None
-    translated_base_type = translate_base_type(item.base_type)
+    translated_name = item.trade_name or (translate_unique_name(item.name) if item.rarity == "unique" else None)
+    translated_base_type = item.trade_base_type or translate_base_type(item.base_type)
 
     if translated_name:
         query["query"]["name"] = translated_name
     if translated_base_type:
         query["query"]["type"] = translated_base_type
 
-    if _uses_cjk_text(item.name) or _uses_cjk_text(item.base_type):
-        if not translated_base_type and not translated_name:
-            term = " ".join(part for part in (item.name, item.base_type) if part)
-            if term:
-                query["query"]["term"] = term
-    else:
+    if not (_uses_cjk_text(item.name) or _uses_cjk_text(item.base_type)):
         if item.rarity == "unique" and item.name:
             query["query"]["name"] = item.name
         if item.base_type:
