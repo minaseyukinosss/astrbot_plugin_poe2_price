@@ -6,7 +6,10 @@ from urllib.parse import quote
 
 import httpx
 
-from models import RateLimitState, TradeListing
+try:
+    from ..models import RateLimitState, TradeListing
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from models import RateLimitState, TradeListing
 
 
 class TradeApiError(Exception):

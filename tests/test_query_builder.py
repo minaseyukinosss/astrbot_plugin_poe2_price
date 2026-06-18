@@ -1,7 +1,7 @@
 import unittest
 
 from models import ItemModifier, ParsedItem
-from services.query_builder import build_item_query
+from services.query_builder import build_item_query, build_name_query
 
 
 class QueryBuilderTest(unittest.TestCase):
@@ -17,8 +17,10 @@ class QueryBuilderTest(unittest.TestCase):
 
         query = build_item_query(item)
 
-        self.assertEqual(query["query"]["name"], "水井之心")
-        self.assertEqual(query["query"]["type"], "鑽石")
+        self.assertNotIn("name", query["query"])
+        self.assertNotIn("type", query["query"])
+        self.assertEqual(query["query"]["term"], "水井之心 鑽石")
+        self.assertNotIn("stats", query["query"])
         self.assertEqual(query["query"]["status"]["option"], "online")
         self.assertEqual(query["query"]["filters"]["trade_filters"]["filters"]["sale_type"]["option"], "priced")
         self.assertEqual(query["sort"], {"price": "asc"})
@@ -41,7 +43,8 @@ class QueryBuilderTest(unittest.TestCase):
 
         query = build_item_query(item)
 
-        self.assertEqual(query["query"]["type"], "絲綢便鞋")
+        self.assertNotIn("type", query["query"])
+        self.assertEqual(query["query"]["term"], "風暴 行靴 絲綢便鞋")
         self.assertEqual(
             query["query"]["filters"]["type_filters"]["filters"]["rarity"]["option"],
             "rare",
@@ -53,6 +56,20 @@ class QueryBuilderTest(unittest.TestCase):
         self.assertEqual([entry["id"] for entry in stat_filters], ["explicit.stat_3299347043", "explicit.stat_3845215720"])
         self.assertEqual(stat_filters[0]["value"]["min"], 19)
         self.assertEqual(stat_filters[1]["value"]["min"], 16)
+
+    def test_name_query_uses_free_text_term_without_empty_stats(self):
+        query = build_name_query("水井之心")
+
+        self.assertEqual(query["query"]["term"], "水井之心")
+        self.assertNotIn("name", query["query"])
+        self.assertNotIn("stats", query["query"])
+
+    def test_name_query_uses_free_text_term_for_english_keywords(self):
+        query = build_name_query("Divine Orb")
+
+        self.assertEqual(query["query"]["term"], "Divine Orb")
+        self.assertNotIn("name", query["query"])
+        self.assertNotIn("stats", query["query"])
 
 
 if __name__ == "__main__":

@@ -2,13 +2,25 @@ from __future__ import annotations
 
 import re
 
-from models import ItemModifier, ParsedItem
-from services.item_text_normalizer import (
-    normalize_rarity,
-    parse_key_value,
-    should_ignore_line,
-    split_sections,
-)
+try:
+    from ..models import ItemModifier, ParsedItem
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from models import ItemModifier, ParsedItem
+
+try:
+    from .item_text_normalizer import (
+        normalize_rarity,
+        parse_key_value,
+        should_ignore_line,
+        split_sections,
+    )
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from services.item_text_normalizer import (
+        normalize_rarity,
+        parse_key_value,
+        should_ignore_line,
+        split_sections,
+    )
 
 
 def parse_item_text(text: str) -> ParsedItem | None:

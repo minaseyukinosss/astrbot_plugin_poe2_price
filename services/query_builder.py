@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from models import ParsedItem
+import re
+
+try:
+    from ..models import ParsedItem
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from models import ParsedItem
 
 
 def build_item_query(item: ParsedItem) -> dict:
@@ -17,11 +22,15 @@ def build_item_query(item: ParsedItem) -> dict:
         "sort": {"price": "asc"},
     }
 
-    if item.rarity == "unique" and item.name:
-        query["query"]["name"] = item.name
-
-    if item.base_type:
-        query["query"]["type"] = item.base_type
+    if _uses_cjk_text(item.name) or _uses_cjk_text(item.base_type):
+        term = " ".join(part for part in (item.name, item.base_type) if part)
+        if term:
+            query["query"]["term"] = term
+    else:
+        if item.rarity == "unique" and item.name:
+            query["query"]["name"] = item.name
+        if item.base_type:
+            query["query"]["type"] = item.base_type
 
     filters = query["query"]["filters"]
     type_filters = {"filters": {}}
@@ -54,25 +63,32 @@ def build_item_query(item: ParsedItem) -> dict:
             stat_filter["value"] = {"min": _relaxed_min(modifier.values[0])}
         stat_filters.append(stat_filter)
 
-    query["query"]["stats"][0]["filters"] = stat_filters
+    if stat_filters:
+        query["query"]["stats"][0]["filters"] = stat_filters
+    else:
+        query["query"].pop("stats", None)
     return query
 
 
 def build_name_query(name: str) -> dict:
     """根据物品名构建基础查询。"""
 
-    return {
+    query = {
         "query": {
             "status": {"option": "online"},
             "term": name,
             "filters": {
                 "trade_filters": {"filters": {"sale_type": {"option": "priced"}}},
             },
-            "stats": [{"type": "and", "filters": []}],
         },
         "sort": {"price": "asc"},
     }
+    return query
 
 
 def _relaxed_min(value: float) -> int | float:
     return int(value * 0.8)
+
+
+def _uses_cjk_text(text: str) -> bool:
+    return bool(re.search(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]", text))

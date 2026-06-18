@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from models import PriceEstimate
+try:
+    from ..models import PriceEstimate
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from models import PriceEstimate
 
 
 def format_price_estimate(estimate: PriceEstimate) -> str:

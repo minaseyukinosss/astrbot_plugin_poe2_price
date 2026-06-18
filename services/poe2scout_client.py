@@ -5,6 +5,11 @@ from typing import Any
 
 import httpx
 
+try:
+    from .currency_aliases import iter_currency_search_terms, normalize_currency_keyword
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from services.currency_aliases import iter_currency_search_terms, normalize_currency_keyword
+
 
 class Poe2ScoutClient:
     """POE2 Scout 辅助数据客户端。"""
@@ -26,16 +31,16 @@ class Poe2ScoutClient:
 
     async def search_currency(self, league: str, keyword: str, realm: str = "poe2") -> dict[str, Any] | None:
         categories = ["currency", "essence", "rune", "fragment"]
-        lowered = keyword.lower()
+        search_terms = iter_currency_search_terms(keyword)
         for category in categories:
             data = await self._get_cached(
                 f"/{realm}/Leagues/{league}/Currencies/ByCategory",
-                params={"Category": category, "Search": keyword, "PerPage": 25},
+                params={"Category": category, "Search": search_terms[0], "PerPage": 25},
             )
             for item in data.get("Items", []):
                 text = str(item.get("Text", "")).lower()
                 api_id = str(item.get("ApiId", "")).lower()
-                if lowered in text or lowered in api_id:
+                if any(term.lower() in text or term.lower() in api_id for term in search_terms):
                     return item
         return None
 

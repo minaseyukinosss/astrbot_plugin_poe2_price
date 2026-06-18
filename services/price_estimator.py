@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from statistics import median
 
-from models import PriceEstimate, TradeListing
+try:
+    from ..models import PriceEstimate, TradeListing
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from models import PriceEstimate, TradeListing
 
 
 def estimate_price(

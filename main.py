@@ -7,13 +7,22 @@ from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
-from services.formatter import format_price_estimate
-from services.item_parser import parse_item_text
-from services.poe2scout_client import Poe2ScoutClient
-from services.price_estimator import estimate_price
-from services.query_builder import build_item_query, build_name_query
-from services.stat_catalog import StatCatalog
-from services.trade_client import TradeApiError, TradeClient, build_trade_search_url
+try:
+    from .services.formatter import format_price_estimate
+    from .services.item_parser import parse_item_text
+    from .services.poe2scout_client import Poe2ScoutClient
+    from .services.price_estimator import estimate_price
+    from .services.query_builder import build_item_query, build_name_query
+    from .services.stat_catalog import StatCatalog
+    from .services.trade_client import TradeApiError, TradeClient, build_trade_search_url
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from services.formatter import format_price_estimate
+    from services.item_parser import parse_item_text
+    from services.poe2scout_client import Poe2ScoutClient
+    from services.price_estimator import estimate_price
+    from services.query_builder import build_item_query, build_name_query
+    from services.stat_catalog import StatCatalog
+    from services.trade_client import TradeApiError, TradeClient, build_trade_search_url
 
 
 class Poe2PricePlugin(Star):
