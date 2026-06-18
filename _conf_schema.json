@@ -1,0 +1,59 @@
+{
+  "default_league": {
+    "description": "默认联盟",
+    "type": "string",
+    "default": "Runes of Aldur",
+    "hint": "用于 trade2 和 POE2 Scout 查询。"
+  },
+  "realm": {
+    "description": "POE2 Scout realm",
+    "type": "string",
+    "default": "poe2",
+    "hint": "国际服 POE2 默认使用 poe2。"
+  },
+  "max_fetch_results": {
+    "description": "最多拉取挂售数量",
+    "type": "int",
+    "default": 20,
+    "hint": "数量越大越准，但更容易触发限流。"
+  },
+  "min_valid_listings": {
+    "description": "最低有效样本数",
+    "type": "int",
+    "default": 5,
+    "hint": "低于该数量时输出低置信度。"
+  },
+  "cache_ttl_seconds": {
+    "description": "trade stats 缓存秒数",
+    "type": "int",
+    "default": 86400
+  },
+  "scout_cache_ttl_seconds": {
+    "description": "POE2 Scout 缓存秒数",
+    "type": "int",
+    "default": 1800
+  },
+  "request_timeout_seconds": {
+    "description": "请求超时秒数",
+    "type": "int",
+    "default": 15
+  },
+  "enable_poe2scout": {
+    "description": "启用 POE2 Scout 辅助价格",
+    "type": "bool",
+    "default": true
+  },
+  "user_agent_contact": {
+    "description": "User-Agent 联系信息",
+    "type": "string",
+    "default": "",
+    "hint": "建议填写邮箱或项目地址，便于负责任地访问 POE API。",
+    "obvious_hint": true
+  },
+  "poesessid": {
+    "description": "POESESSID",
+    "type": "string",
+    "default": "",
+    "hint": "默认不需要。仅在后续需要登录态查询时使用。"
+  }
+}

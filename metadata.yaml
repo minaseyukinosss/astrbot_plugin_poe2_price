@@ -1,0 +1,9 @@
+name: astrbot_plugin_poe2_price
+desc: POE2 国际服实时查价插件，支持繁体中文物品文本。
+help: 使用 /poe2查价 粘贴物品文本，或使用 /poe2通货 查询通货。
+version: 0.1.0
+author: minase
+repo: "https://github.com/minaseyukinosss/astrbot_plugin_poe2_price"
+display_name: POE2 实时查价
+short_desc: 支持繁体中文复制文本的 POE2 国际服查价。
+astrbot_version: ">=4.9.2"
