@@ -42,7 +42,7 @@ class NinjaClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(price)
         self.assertEqual(price.name, "Divine Orb")
         self.assertEqual(price.amount, 120)
-        self.assertEqual(price.currency, "exalted")
+        self.assertEqual(price.currency, "崇高石")
         self.assertEqual(price.volume, 42)
         self.assertEqual(price.change_percent, 5.5)
         self.assertEqual(client.requests[0][1]["type"], "Currency")
@@ -54,12 +54,12 @@ class NinjaClientTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(price)
 
-    async def test_search_currency_converts_primary_value_to_secondary_currency(self):
+    async def test_search_currency_converts_primary_value_to_exalted_currency(self):
         client = FakeNinjaClient(
             {
                 "core": {
                     "items": [{"id": "divine", "name": "Divine Orb"}],
-                    "rates": {"chaos": 2.45},
+                    "rates": {"chaos": 2.45, "exalted": 0.5},
                     "primary": "divine",
                     "secondary": "chaos",
                 },
@@ -69,8 +69,8 @@ class NinjaClientTest(unittest.IsolatedAsyncioTestCase):
 
         price = await client.search_currency("Standard", "神圣石")
 
-        self.assertEqual(price.amount, 2.45)
-        self.assertEqual(price.currency, "chaos")
+        self.assertEqual(price.amount, 0.5)
+        self.assertEqual(price.currency, "崇高石")
 
 
 if __name__ == "__main__":

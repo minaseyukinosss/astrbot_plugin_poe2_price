@@ -72,13 +72,13 @@ class NinjaClient:
         if not line:
             return None
 
-        secondary = str(core.get("secondary") or "exalted")
-        secondary_rate = float((core.get("rates") or {}).get(secondary, 1) or 1)
-        amount = float(line.get("primaryValue") or 0) * secondary_rate
+        target_currency_id = "exalted"
+        target_rate = _currency_rate(core, target_currency_id)
+        amount = float(line.get("primaryValue") or 0) * target_rate
         return CurrencyPrice(
             name=str(matched_item.get("name") or matched_item.get("id") or keyword),
             amount=_clean_number(amount),
-            currency=secondary,
+            currency="崇高石",
             league=league,
             source="poe.ninja",
             volume=float(line.get("volumePrimaryValue") or 0),
@@ -103,3 +103,12 @@ def _clean_number(value: float) -> int | float:
     if float(value).is_integer():
         return int(value)
     return round(value, 4)
+
+
+def _currency_rate(core: dict[str, Any], currency_id: str) -> float:
+    rates = core.get("rates") or {}
+    if currency_id in rates:
+        return float(rates[currency_id] or 1)
+    if str(core.get("secondary") or "").lower() == currency_id:
+        return 1.0
+    return 1.0
