@@ -54,6 +54,25 @@ class FormatterTest(unittest.TestCase):
 
         self.assertIn("样本不足，仅供参考", text)
 
+    def test_formats_relaxation_warning_when_trade_query_was_broadened(self):
+        estimate = PriceEstimate(
+            item_name="風暴 行靴 (絲綢便鞋)",
+            league="Runes of Aldur",
+            median=12,
+            low=10,
+            high=14,
+            currency="exalted",
+            confidence="中",
+            valid_count=5,
+            total_count=5,
+            source="trade2",
+            warnings=["已使用核心词缀查询"],
+        )
+
+        text = format_price_estimate(estimate)
+
+        self.assertIn("警告：已使用核心词缀查询", text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,25 +10,23 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 try:
     from .services.formatter import format_price_estimate
     from .services.item_parser import parse_item_text
+    from .services.market_router import MarketRouter
     from .services.ninja_client import NinjaClient
     from .services.poe2db_client import Poe2DbClient
     from .services.poe2scout_client import Poe2ScoutClient
-    from .services.price_estimator import estimate_price
-    from .services.query_builder import build_item_query, build_name_query
     from .services.stat_catalog import StatCatalog
-    from .services.trade_client import TradeApiError, TradeClient, build_trade_search_url
+    from .services.trade_client import TradeApiError, TradeClient
     from .services.translation_cache import TranslationCache
     from .services.translation_resolver import TranslationResolver
 except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
     from services.formatter import format_price_estimate
     from services.item_parser import parse_item_text
+    from services.market_router import MarketRouter
     from services.ninja_client import NinjaClient
     from services.poe2db_client import Poe2DbClient
     from services.poe2scout_client import Poe2ScoutClient
-    from services.price_estimator import estimate_price
-    from services.query_builder import build_item_query, build_name_query
     from services.stat_catalog import StatCatalog
-    from services.trade_client import TradeApiError, TradeClient, build_trade_search_url
+    from services.trade_client import TradeApiError, TradeClient
     from services.translation_cache import TranslationCache
     from services.translation_resolver import TranslationResolver
 
@@ -146,35 +144,27 @@ class Poe2PricePlugin(Star):
             await self.translation_resolver.apply_to_item(item)
             self._save_translation_cache()
             translation_warnings = list(item.translation_warnings)
-            trade_query = build_item_query(item)
-            display_name = item.display_name
+            translated_text = None
         else:
             search_text, translation_warnings = await self.translation_resolver.resolve_search_text(query_text)
             self._save_translation_cache()
-            trade_query = build_name_query(search_text)
-            display_name = query_text if search_text == query_text else f"{query_text} ({search_text})"
+            translated_text = search_text
 
         try:
-            search_result = await self.trade_client.search(self.default_league, trade_query)
-            result_ids = search_result.get("result", [])
-            query_id = search_result.get("id")
-            if not query_id or not result_ids:
-                return _format_no_results(display_name, self.default_league, translation_warnings)
-            trade_url = build_trade_search_url(self.default_league, query_id, base_url=self.trade_client.base_url)
-            listings = await self.trade_client.fetch_listings(result_ids, query_id, limit=self.max_fetch_results)
+            router = MarketRouter(
+                trade_client=self.trade_client,
+                ninja_client=self.ninja_client,
+                default_league=self.default_league,
+                max_fetch_results=self.max_fetch_results,
+                min_valid_listings=self.min_valid_listings,
+            )
+            estimate = await router.price_text(query_text, translated_text=translated_text, item=item)
         except TradeApiError as exc:
             return str(exc)
         except Exception as exc:
             logger.warning(f"POE2 查价失败：{exc}")
             return "查价失败：远端服务暂时不可用，请稍后再试。"
 
-        estimate = estimate_price(
-            display_name,
-            self.default_league,
-            listings,
-            min_valid_listings=self.min_valid_listings,
-            trade_url=trade_url,
-        )
         estimate.warnings.extend(translation_warnings)
         return format_price_estimate(estimate)
 
