@@ -11,6 +11,11 @@ try:
 except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
     from models import RateLimitState, TradeListing
 
+try:
+    from .http_client import RateLimiter
+except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
+    from services.http_client import RateLimiter
+
 
 class TradeApiError(Exception):
     """trade2 请求失败。"""
@@ -24,9 +29,17 @@ class TradeApiError(Exception):
 class TradeClient:
     """Path of Exile trade2 异步客户端。"""
 
-    def __init__(self, *, user_agent: str, timeout: float = 15.0, base_url: str = "https://www.pathofexile.com") -> None:
+    def __init__(
+        self,
+        *,
+        user_agent: str,
+        timeout: float = 15.0,
+        base_url: str = "https://www.pathofexile.com",
+        rate_limiter: RateLimiter | None = None,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.rate_limit = RateLimitState()
+        self.rate_limiter = rate_limiter or RateLimiter(max_requests=10, window_seconds=60)
         self._client = httpx.AsyncClient(
             timeout=timeout,
             headers={
@@ -67,6 +80,7 @@ class TradeClient:
             retry_after = max(1, int(self.rate_limit.blocked_until - now))
             raise TradeApiError(f"trade2 正在限流，请 {retry_after} 秒后重试", 429, retry_after)
 
+        await self.rate_limiter.wait()
         response = await self._client.request(method, f"{self.base_url}{path}", **kwargs)
         self._update_rate_limit(response)
 

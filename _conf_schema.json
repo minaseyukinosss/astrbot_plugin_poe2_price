@@ -3,7 +3,7 @@
     "description": "默认联盟",
     "type": "string",
     "default": "Runes of Aldur",
-    "hint": "用于 trade2 和 POE2 Scout 查询。"
+    "hint": "用于 trade2、poe.ninja 和 POE2 Scout 查询。"
   },
   "realm": {
     "description": "POE2 Scout realm",

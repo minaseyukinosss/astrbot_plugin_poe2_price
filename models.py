@@ -64,6 +64,21 @@ class TradeListing:
 
 
 @dataclass(slots=True)
+class CurrencyPrice:
+    """通货价格。"""
+
+    name: str
+    amount: float
+    currency: str
+    league: str
+    source: str
+    volume: float = 0
+    change_percent: float | None = None
+    icon_url: str = ""
+    details_id: str = ""
+
+
+@dataclass(slots=True)
 class PriceEstimate:
     """估价结果。"""
 

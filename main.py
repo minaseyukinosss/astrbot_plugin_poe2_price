@@ -10,6 +10,7 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 try:
     from .services.formatter import format_price_estimate
     from .services.item_parser import parse_item_text
+    from .services.ninja_client import NinjaClient
     from .services.poe2scout_client import Poe2ScoutClient
     from .services.price_estimator import estimate_price
     from .services.query_builder import build_item_query, build_name_query
@@ -18,6 +19,7 @@ try:
 except ImportError:  # pragma: no cover - 兼容本地单元测试的顶层导入。
     from services.formatter import format_price_estimate
     from services.item_parser import parse_item_text
+    from services.ninja_client import NinjaClient
     from services.poe2scout_client import Poe2ScoutClient
     from services.price_estimator import estimate_price
     from services.query_builder import build_item_query, build_name_query
@@ -40,6 +42,7 @@ class Poe2PricePlugin(Star):
         user_agent = f"OAuth astrbot-plugin-poe2-price/0.1.0 (contact: {contact})"
 
         self.trade_client = TradeClient(user_agent=user_agent, timeout=timeout)
+        self.ninja_client = NinjaClient(timeout=timeout, user_agent=user_agent)
         self.scout_client = Poe2ScoutClient(timeout=timeout, cache_ttl=int(config.get("scout_cache_ttl_seconds", 1800)))
         self.stat_catalog = StatCatalog()
 
@@ -98,18 +101,24 @@ class Poe2PricePlugin(Star):
             return
 
         try:
-            item = await self.scout_client.search_currency(self.default_league, keyword, self.realm)
+            item = await self.ninja_client.search_currency(self.default_league, keyword)
         except Exception as exc:
-            logger.warning(f"POE2 Scout 通货查询失败：{exc}")
+            logger.warning(f"poe.ninja 通货查询失败：{exc}")
             item = None
 
         if not item:
-            yield event.plain_result("没有找到该通货的 POE2 Scout 价格。")
+            yield event.plain_result("没有找到该通货的 poe.ninja 价格。")
             return
 
-        price = item.get("CurrentPrice")
-        text = item.get("Text", keyword)
-        yield event.plain_result(f"通货：{text}\n联盟：{self.default_league}\n当前价格：{price} exalted\n数据源：POE2 Scout")
+        change = "" if item.change_percent is None else f"\n近况变化：{item.change_percent:g}%"
+        yield event.plain_result(
+            f"通货：{item.name}\n"
+            f"联盟：{self.default_league}\n"
+            f"当前价格：{item.amount:g} {item.currency}\n"
+            f"成交量：{item.volume:g}"
+            f"{change}\n"
+            f"数据源：{item.source}"
+        )
 
     async def _handle_price_check(self, query_text: str) -> str:
         if not query_text:
@@ -162,6 +171,7 @@ class Poe2PricePlugin(Star):
         """插件停用时关闭网络客户端。"""
 
         await self.trade_client.close()
+        await self.ninja_client.close()
         await self.scout_client.close()
 
 
